@@ -98,6 +98,7 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
         stiffness = {'joint': 40.}  # [N*m/rad]
         damping = {'joint': 1.0}     # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
+        # 期望角度 = 行动系数*网络的一个action输出+默认角度（*0.25以后相当变成了一个弧度）
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
@@ -119,25 +120,13 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
             ang_vel_yaw = [-1, 1]  # min max [rad/s]
             heading = [-3.14, 3.14]
 
-    # class commands( LeggedRobotCfg.control ):
-    #     curriculum = False
-    #     max_curriculum = 1.
-    #     num_commands = 4  # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
-    #     resampling_time = 10.  # time before command are changed[s]
-    #     heading_command = True  # if true: compute ang vel command from heading error
-    #     global_reference = False
-
-    #     class ranges:
-    #         lin_vel_x = [-1, 1]  # min max [m/s]
-    #         lin_vel_y = [-1, 1]  # min max [m/s]
-    #         ang_vel_yaw = [-1, 1]  # min max [rad/s]
-    #         heading = [-3.14, 3.14]
-
     class asset( LeggedRobotCfg.asset ):
         file = '{ROOT_DIR}/resources/go2/urdf/go2.urdf'
         foot_name = "foot"
         name = "go2"
+        # 发生碰撞以后进行惩罚的关节索引
         penalize_contacts_on = ["thigh", "calf"]
+        # 摔倒后检测，检测base
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = True
@@ -154,10 +143,6 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
 
         only_positive_rewards = True
         class scales( LeggedRobotCfg.rewards.scales ):
-            # foot_clearance = -1
-            # foot_mirror = -0.1
-            # foot_slide = -0.1
-
             foot_clearance = -0.5
             foot_mirror = -0.05
             foot_slide = -0.05
@@ -165,7 +150,7 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
             base_height = -10.0
             stumble = -0.05
 
-
+    # 域随机化，质心 摩擦
     class domain_rand( LeggedRobotCfg.domain_rand):
         randomize_friction = True
         #friction_range = [0.2, 2.75]
@@ -220,7 +205,8 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
         
         scale = 1
         invert = True
-    
+
+    # NP3O算法的代价函数    
     class costs:
         class scales:
             pos_limit = 0.1
@@ -257,11 +243,12 @@ class Go2ConstraintHimRoughCfg( LeggedRobotCfg ):
     class cost:
         num_costs = 3
     
-    class terrain(LeggedRobotCfg.terrain):
+    class terrain(LeggedRobotCfg.terrain):# 地形设置
         mesh_type = 'trimesh'  # "heightfield" # none, plane, heightfield or trimesh
         measure_heights = True
         include_act_obs_pair_buf = False
 
+# PPO算法的配置参数
 class Go2ConstraintHimRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
@@ -292,7 +279,7 @@ class Go2ConstraintHimRoughCfgPPO( LeggedRobotCfgPPO ):
         teacher_act = True
         imi_flag = True
       
-    class runner( LeggedRobotCfgPPO.runner ):
+    class runner( LeggedRobotCfgPPO.runner ):# 执行神经网路网络的配置
         run_name = 'test_barlowtwins'
         experiment_name = 'rough_go2_constraint'
         policy_class_name = 'ActorCriticBarlowTwins'
